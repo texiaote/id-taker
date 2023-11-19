@@ -1,4 +1,4 @@
-![img_1.png](img_1.png)
+![logo.png](logo.png)
 # id-taker
 an fast global id distributor written by Rust
 ## Overview
