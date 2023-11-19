@@ -9,11 +9,11 @@ pub struct IdSegments {
 }
 
 impl IdSegments {
-    pub fn new(biz_tag: &str)->Self {
+    pub fn new(biz_tag: &str, initial_id: i64, step: i64) -> Self {
         Self {
             biz_tag: biz_tag.to_string(),
-            max_id: 1,
-            step: 0,
+            max_id: initial_id,
+            step,
         }
     }
 }

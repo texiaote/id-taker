@@ -4,7 +4,8 @@ use std::sync::Arc;
 use axum::Router;
 use axum::routing::{get, post};
 use sqlx::MySqlPool;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::Mutex;
+
 use crate::id_generator::IdGenerator;
 
 mod config;
@@ -22,10 +23,10 @@ async fn main() {
     let id_generator = Arc::new(Mutex::new(IdGenerator::new(pool.clone())));
 
     let app = Router::new()
-        .route("/create_id", post(routes::create_id))
+        .route("/create_biz_tag", post(routes::create_biz_tag))
         .route("/get_id", get(routes::get_id))
         .layer(axum::extract::Extension(id_generator))
-        .layer(axum::extract::Extension(pool));
+        .layer(axum::extract::Extension(Arc::new(pool)));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     println!("Listening on {}", addr);
