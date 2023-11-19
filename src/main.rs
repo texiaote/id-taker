@@ -1,39 +1,37 @@
-use axum::{Json, Router, Server};
-use axum::http::StatusCode;
+use std::net::SocketAddr;
+use std::sync::Arc;
+
+use axum::Router;
 use axum::routing::{get, post};
-use serde::{Deserialize, Serialize};
-use tokio::net::TcpListener;
+use sqlx::MySqlPool;
+use tokio::sync::{Mutex, RwLock};
+use crate::id_generator::IdGenerator;
+
+mod config;
+mod db;
+mod models;
+mod routes;
+mod id_generator;
 
 #[tokio::main]
 async fn main() {
+    dotenv::dotenv().ok();
+    let config = config::load_config().expect("Failed to load configuration");
+    let pool = MySqlPool::connect(&config.database_url).await.expect("Failed to connect the database");
+
+    let id_generator = Arc::new(Mutex::new(IdGenerator::new(pool.clone())));
+
     let app = Router::new()
-        .route("/", get(hello_world))
-        .route("/create_user", post(create_user));
+        .route("/create_id", post(routes::create_id))
+        .route("/get_id", get(routes::get_id))
+        .layer(axum::extract::Extension(id_generator))
+        .layer(axum::extract::Extension(pool));
 
-    Server::bind(&"0.0.0.0:3000".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
+    let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
+    println!("Listening on {}", addr);
+
+    axum::Server::bind(&addr).serve(app.into_make_service()).await.unwrap();
 }
 
 
-async fn hello_world() -> String {
-    return String::from("Hello world");
-}
 
-
-async fn create_user(Json(payload): Json<CreateUser>) -> (StatusCode, Json<User>) {
-    let user = User {
-        id: 13456,
-        username: payload.username,
-    };
-    (StatusCode::OK, Json(user))
-}
-
-#[derive(Deserialize)]
-struct CreateUser {
-    username: String,
-}
-
-#[derive(Serialize)]
-struct User {
-    id: u64,
-    username: String,
-}
