@@ -1,5 +1,5 @@
 use sqlx::MySqlPool;
-use crate::id_generator::IdSegment;
+
 use crate::models::IdSegments;
 
 pub async fn create_id_segment(pool: &MySqlPool, new_segment: &IdSegments) -> Result<(), sqlx::Error> {

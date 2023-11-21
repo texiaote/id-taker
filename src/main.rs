@@ -4,7 +4,6 @@ use std::sync::Arc;
 use axum::Router;
 use axum::routing::{get, post};
 use sqlx::MySqlPool;
-use tokio::sync::RwLock;
 
 use crate::id_generator::IdGenerator;
 
@@ -25,6 +24,7 @@ async fn main() {
     let app = Router::new()
         .route("/create_biz_tag", post(routes::create_biz_tag))
         .route("/get_id", get(routes::get_id))
+        .route("/batch_get_ids", get(routes::batch_get_id))
         .layer(axum::extract::Extension(id_generator))
         .layer(axum::extract::Extension(Arc::new(pool)));
 
