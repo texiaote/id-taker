@@ -1,7 +1,8 @@
 use std::cmp;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicI64, AtomicU64, AtomicUsize, Ordering};
+use snowflake_rs::{SnowFlakeId, STANDARD_EPOCH};
 
 use sqlx::MySqlPool;
 use tokio::sync::RwLock;
@@ -9,18 +10,19 @@ use tokio::sync::RwLock;
 use crate::db;
 
 pub struct IdSegment {
-    pub max_id: i64,
-    pub step: i64,
-    pub next_id: AtomicI64,
+    pub max_id: u64,
+    pub step: u64,
+    pub next_id: AtomicU64,
+    pub snowflake: SnowFlakeId,
 }
 
 impl IdSegment {
-    fn new(next_id: i64, step: i64) -> Self {
+    fn new(next_id: u64, step: u64) -> Self {
         Self {
-            next_id: AtomicI64::new(next_id),
+            next_id: AtomicU64::new(next_id),
             step,
             max_id: next_id + step,
-
+            snowflake: SnowFlakeId::new(1, STANDARD_EPOCH),
         }
     }
 }
@@ -40,7 +42,7 @@ impl IdGenerator {
         }
     }
 
-    pub async fn get_id(&self, biz_tag: &str, count: Option<usize>) -> Result<Vec<i64>, sqlx::Error> {
+    pub async fn get_id(&self, biz_tag: &str, count: Option<usize>) -> Result<Vec<u64>, sqlx::Error> {
 
         // 至少是1条数据
         let count = count.unwrap_or(1);
@@ -48,12 +50,15 @@ impl IdGenerator {
         let mut vec = vec![];
         loop {
             // 找到剩余的数量
-            let remaining = (count - vec.len()) as i64;
+            let remaining = (count - vec.len()) as u64;
             let index = self.index.load(Ordering::SeqCst);
             let buffer = self.buffer[index].read().await;
 
             // 尝试从号段中获取数据
             if let Some(segment) = buffer.get(biz_tag) {
+
+                // 判断是否要用雪花算法
+
                 if segment.next_id.load(Ordering::SeqCst) < segment.max_id {
 
                     // 将数据都拿出去
@@ -63,7 +68,7 @@ impl IdGenerator {
                     let max = cmp::min(segment.next_id.load(Ordering::SeqCst) + remaining, segment.max_id);
 
                     // 从当前值，一直到max的值
-                    let slices: Vec<i64> = (id..max).collect();
+                    let slices: Vec<u64> = (id..max).collect();
                     let _ = vec.extend(&slices);
 
                     // 更新字段
