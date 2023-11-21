@@ -1,10 +1,10 @@
-use std::sync::Arc;
+use std::sync::{Arc};
 
 use axum::{Extension, Json};
 use axum::extract::Query;
 use serde::{Deserialize, Serialize};
 use sqlx::MySqlPool;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::db;
 use crate::id_generator::IdGenerator;
@@ -51,8 +51,8 @@ pub async fn create_biz_tag(Extension(pool): Extension<Arc<MySqlPool>>, Json(req
     }
 }
 
-pub async fn get_id(Extension(pool): Extension<Arc<Mutex<IdGenerator>>>, Query(request): Query<GetIdRequest>) -> Json<GetIdResponse> {
-    let mut id_generator = pool.lock().await;
+pub async fn get_id(Extension(pool): Extension<Arc<IdGenerator>>, Query(request): Query<GetIdRequest>) -> Json<GetIdResponse> {
+    let  id_generator = pool;
     match id_generator.get_id(&request.biz_tag).await {
         Ok(id) => Json(GetIdResponse { id }),
         Err(_) => Json(GetIdResponse { id: -1 })
