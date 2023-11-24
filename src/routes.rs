@@ -4,6 +4,7 @@ use axum::{Extension, Json};
 use axum::extract::Query;
 use serde::{Deserialize, Serialize};
 use sqlx::MySqlPool;
+use tokio::sync::Mutex;
 
 use crate::db;
 use crate::id_generator::IdGenerator;
@@ -64,15 +65,15 @@ pub async fn create_biz_tag(Extension(pool): Extension<Arc<MySqlPool>>, Json(req
     }
 }
 
-pub async fn get_id(Extension(id_generator): Extension<Arc<IdGenerator>>, Query(request): Query<GetIdRequest>) -> Json<GetIdResponse> {
-    match id_generator.get_id(&request.biz_tag, None).await {
+pub async fn get_id(Extension(id_generator): Extension<Arc<Mutex<IdGenerator>>>, Query(request): Query<GetIdRequest>) -> Json<GetIdResponse> {
+    match id_generator.lock().await.get_id(&request.biz_tag, None).await {
         Ok(vec) => Json(GetIdResponse { id: vec[0] }),
         Err(_) => Json(GetIdResponse { id: 0 })
     }
 }
 
-pub async fn batch_get_id(Extension(id_generator): Extension<Arc<IdGenerator>>, Query(request): Query<BatchGetIdRequest>) -> Json<BatchGetIdResponse> {
-    match id_generator.get_id(&request.biz_tag, request.count).await {
+pub async fn batch_get_id(Extension(id_generator): Extension<Arc<Mutex<IdGenerator>>>, Query(request): Query<BatchGetIdRequest>) -> Json<BatchGetIdResponse> {
+    match id_generator.lock().await.get_id(&request.biz_tag, request.count).await {
         Ok(vec) => Json(BatchGetIdResponse {
             ids: vec
         }),

@@ -1,9 +1,10 @@
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc};
 
 use axum::Router;
 use axum::routing::{get, post};
 use sqlx::MySqlPool;
+use tokio::sync::Mutex;
 
 use crate::id_generator::IdGenerator;
 
@@ -19,7 +20,7 @@ async fn main() {
     let config = config::load_config().expect("Failed to load configuration");
     let pool = MySqlPool::connect(&config.database_url).await.expect("Failed to connect the database");
 
-    let id_generator = Arc::new(IdGenerator::new(pool.clone()));
+    let id_generator = Arc::new(Mutex::new(IdGenerator::new(pool.clone())));
 
     let app = Router::new()
         .route("/create_biz_tag", post(routes::create_biz_tag))
